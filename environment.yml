@@ -1,0 +1,7 @@
+name: cljsh
+channels:
+  - conda-forge
+dependencies:
+  - pandas
+  - numpy
+  - keras
