@@ -10,6 +10,9 @@
   (:gen-class)
   (:refer-clojure :exclude [with-bindings])
   (:require [clojure.spec.alpha :as spec])
+  (:use [clojure.main :only (ex-triage)]
+        [clojure.main :only (err->msg)]
+        [clojure.main :only (ex-str)])
   (:import (java.io StringReader BufferedWriter FileWriter)
            (java.nio.file Files)
            (java.nio.file.attribute FileAttribute)
@@ -17,18 +20,6 @@
                          LineNumberingPushbackReader RT LispReader$ReaderException)))
 
 ;;+++++++++++++++++++++++++++++| MINIMAL REPL CODE |++++++++++++++++++++++++++++++++;;
-(def ^:private core-namespaces
-  #{"clojure.core" "clojure.core.reducers" "clojure.core.protocols" "clojure.data" "clojure.datafy"
-    "clojure.edn" "clojure.instant" "clojure.java.io" "clojure.main" "clojure.pprint" "clojure.reflect"
-    "clojure.repl" "clojure.set" "clojure.spec.alpha" "clojure.spec.gen.alpha" "clojure.spec.test.alpha"
-    "clojure.string" "clojure.template" "clojure.uuid" "clojure.walk" "clojure.xml" "clojure.zip"})
-
-(defn- core-class?
-  [^String class-name]
-  (and (not (nil? class-name))
-       (or (.startsWith class-name "clojure.lang.")
-           (contains? core-namespaces (second (re-find #"^([^$]+)\$" class-name))))))
-
 (defmacro with-bindings
   "Executes body in the context of thread-local bindings for several vars
   that often need to be set!: *ns* *warn-on-reflection* *math-context*
@@ -55,188 +46,10 @@
              *e nil]
      ~@body))
 
-(defn demunge
-  "Given a string representation of a fn class,
-  as in a stack trace element, returns a readable version."
-  {:added "1.3"}
-  [fn-name]
-  (clojure.lang.Compiler/demunge fn-name))
-
 (defn repl-prompt
   "Default :prompt hook for repl"
   []
   (printf "%s=> " (ns-name *ns*)))
-
-(defn- file-path
-  "Helper to get the relative path to the source file or nil"
-  [^String full-path]
-  (when full-path
-    (try
-      (let [path (.getPath (java.io.File. full-path))
-            cd-path (str (.getAbsolutePath (java.io.File. "")) "/")]
-        (if (.startsWith path cd-path)
-          (subs path (count cd-path))
-          path))
-      (catch Throwable t
-        full-path))))
-
-(defn- file-name
-  "Helper to get just the file name part of a path or nil"
-  [^String full-path]
-  (when full-path
-    (try
-      (.getName (java.io.File. full-path))
-      (catch Throwable t))))
-
-(defn- java-loc->source
-  "Convert Java class name and method symbol to source symbol, either a
-  Clojure function or Java class and method."
-  [clazz method]
-  (if (#{'invoke 'invokeStatic} method)
-    (let [degen #(.replaceAll ^String % "--.*$" "")
-          [ns-name fn-name & nested] (->> (str clazz) (.split #"\$") (map demunge) (map degen))]
-      (symbol ns-name (String/join "$" ^"[Ljava.lang.String;" (into-array String (cons fn-name nested)))))
-    (symbol (name clazz) (name method))))
-
-(defn ex-triage
-  "Returns an analysis of the phase, error, cause, and location of an error that occurred
-  based on Throwable data, as returned by Throwable->map. All attributes other than phase
-  are optional:
-    :clojure.error/phase - keyword phase indicator, one of:
-      :read-source :compile-syntax-check :compilation :macro-syntax-check :macroexpansion
-      :execution :read-eval-result :print-eval-result
-    :clojure.error/source - file name (no path)
-    :clojure.error/path - source path
-    :clojure.error/line - integer line number
-    :clojure.error/column - integer column number
-    :clojure.error/symbol - symbol being expanded/compiled/invoked
-    :clojure.error/class - cause exception class symbol
-    :clojure.error/cause - cause exception message
-    :clojure.error/spec - explain-data for spec error"
-  {:added "1.10"}
-  [datafied-throwable]
-  (let [{:keys [via trace phase] :or {phase :execution}} datafied-throwable
-        {:keys [type message data]} (last via)
-        {:clojure.spec.alpha/keys [problems fn], :clojure.spec.test.alpha/keys [caller]} data
-        {:clojure.error/keys [source] :as top-data} (:data (first via))]
-    (assoc
-      (case phase
-        :read-source
-        (let [{:clojure.error/keys [line column]} data]
-          (cond-> (merge (-> via second :data) top-data)
-            source (assoc :clojure.error/source (file-name source)
-                          :clojure.error/path (file-path source))
-            (#{"NO_SOURCE_FILE" "NO_SOURCE_PATH"} source) (dissoc :clojure.error/source :clojure.error/path)
-            message (assoc :clojure.error/cause message)))
-
-        (:compile-syntax-check :compilation :macro-syntax-check :macroexpansion)
-        (cond-> top-data
-          source (assoc :clojure.error/source (file-name source)
-                        :clojure.error/path (file-path source))
-          (#{"NO_SOURCE_FILE" "NO_SOURCE_PATH"} source) (dissoc :clojure.error/source :clojure.error/path)
-          type (assoc :clojure.error/class type)
-          message (assoc :clojure.error/cause message)
-          problems (assoc :clojure.error/spec data))
-
-        (:read-eval-result :print-eval-result)
-        (let [[source method file line] (-> trace first)]
-          (cond-> top-data
-            line (assoc :clojure.error/line line)
-            file (assoc :clojure.error/source file)
-            (and source method) (assoc :clojure.error/symbol (java-loc->source source method))
-            type (assoc :clojure.error/class type)
-            message (assoc :clojure.error/cause message)))
-
-        :execution
-        (let [[source method file line] (->> trace (drop-while #(core-class? (name (first %)))) first)
-              file (first (remove #(or (nil? %) (#{"NO_SOURCE_FILE" "NO_SOURCE_PATH"} %)) [(:file caller) file]))
-              err-line (or (:line caller) line)]
-          (cond-> {:clojure.error/class type}
-            err-line (assoc :clojure.error/line err-line)
-            message (assoc :clojure.error/cause message)
-            (or fn (and source method)) (assoc :clojure.error/symbol (or fn (java-loc->source source method)))
-            file (assoc :clojure.error/source file)
-            problems (assoc :clojure.error/spec data))))
-      :clojure.error/phase phase)))
-
-(defn ex-str
-  "Returns a string from exception data, as produced by ex-triage.
-  The first line summarizes the exception phase and location.
-  The subsequent lines describe the cause."
-  {:added "1.10"}
-  [{:clojure.error/keys [phase source path line column symbol class cause spec]
-    :as triage-data}]
-  (let [loc (str (or path source "REPL") ":" (or line 1) (if column (str ":" column) ""))
-        class-name (name (or class ""))
-        simple-class (if class (or (first (re-find #"([^.])++$" class-name)) class-name))
-        cause-type (if (contains? #{"Exception" "RuntimeException"} simple-class)
-                     "" ;; omit, not useful
-                     (str " (" simple-class ")"))]
-    (case phase
-      :read-source
-      (format "Syntax error reading source at (%s).%n%s%n" loc cause)
-
-      :macro-syntax-check
-      (format "Syntax error macroexpanding %sat (%s).%n%s"
-              (if symbol (str symbol " ") "")
-              loc
-              (if spec
-                (with-out-str
-                  (spec/explain-out
-                    (if (= spec/*explain-out* spec/explain-printer)
-                      (update spec :clojure.spec.alpha/problems
-                              (fn [probs] (map #(dissoc % :in) probs)))
-                      spec)))
-                (format "%s%n" cause)))
-
-      :macroexpansion
-      (format "Unexpected error%s macroexpanding %sat (%s).%n%s%n"
-              cause-type
-              (if symbol (str symbol " ") "")
-              loc
-              cause)
-
-      :compile-syntax-check
-      (format "Syntax error%s compiling %sat (%s).%n%s%n"
-              cause-type
-              (if symbol (str symbol " ") "")
-              loc
-              cause)
-
-      :compilation
-      (format "Unexpected error%s compiling %sat (%s).%n%s%n"
-              cause-type
-              (if symbol (str symbol " ") "")
-              loc
-              cause)
-
-      :read-eval-result
-      (format "Error reading eval result%s at %s (%s).%n%s%n" cause-type symbol loc cause)
-
-      :print-eval-result
-      (format "Error printing return value%s at %s (%s).%n%s%n" cause-type symbol loc cause)
-
-      :execution
-      (if spec
-        (format "Execution error - invalid arguments to %s at (%s).%n%s"
-                symbol
-                loc
-                (with-out-str
-                  (spec/explain-out
-                    (if (= spec/*explain-out* spec/explain-printer)
-                      (update spec :clojure.spec.alpha/problems
-                              (fn [probs] (map #(dissoc % :in) probs)))
-                      spec))))
-        (format "Execution error%s at %s(%s).%n%s%n"
-                cause-type
-                (if symbol (str symbol " ") "")
-                loc
-                cause)))))
-
-(defn err->msg
-  "Helper to return an error message string from an exception."
-  [^Throwable e]
-  (-> e Throwable->map ex-triage ex-str))
 
 (def ^{:doc "A sequence of lib specs that are applied to `require`
 by default when a new command-line REPL is started."} repl-requires
