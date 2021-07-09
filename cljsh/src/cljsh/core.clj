@@ -1,4 +1,6 @@
-;;========================| CLJSH CORE |========================;;
+;;==================================================================================;;
+;;--------------------------------| CLJSH CORE |------------------------------------;;
+;;==================================================================================;;
 ;; Reference for the REPL implementation taken from clojure core,
 ;; specifically clojure.main, as described here:
 ;; https://github.com/clojure/clojure/blob/master/src/clj/clojure/main.clj
@@ -14,6 +16,7 @@
            (clojure.lang Compiler Compiler$CompilerException
                          LineNumberingPushbackReader RT LispReader$ReaderException)))
 
+;;+++++++++++++++++++++++++++++| MINIMAL REPL CODE |++++++++++++++++++++++++++++++++;;
 (def ^:private core-namespaces
   #{"clojure.core" "clojure.core.reducers" "clojure.core.protocols" "clojure.data" "clojure.datafy"
     "clojure.edn" "clojure.instant" "clojure.java.io" "clojure.main" "clojure.pprint" "clojure.reflect"
@@ -411,21 +414,22 @@ by default when a new command-line REPL is started."} repl-requires
            (flush))
          (recur))))))
 
-(defn- repl-opt
-  "Start a repl with args and inits. Print greeting if no eval options were
-  present"
+(defn- repl-init
+  "Start a repl without any args, print version"
   [[_ & args] inits]
   (println "Clojure" (clojure-version))
   (repl :init (fn []
                 (apply require repl-requires)))
   (prn)
   (System/exit 0))
-       
-(defn -main ;;repl-opt
+;;+++++++++++++++++++++++++++++| END REPL CODE |++++++++++++++++++++++++++++++++++++;;
+
+;;+++++++++++++++++++++++++++++| BEGIN CLJSH CODE |+++++++++++++++++++++++++++++++++;;
+(defn -main
   "Main function, program entry point"
   [& args]
   (try
-    (repl-opt nil nil)
+    (repl-init nil nil)
     (catch Throwable t
       (println "caught exception %s" t)
       (System/exit 1))))
