@@ -84,6 +84,8 @@ if [ -x /usr/bin/dircolors ]; then
     alias egrep='egrep --color=auto'
 fi
 
+PS1="${debian_chroot:+($debian_chroot)}\[\033[01;36m\]\u\[\033[00m\]@\[\033[01;34m\]notebook\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ "
 export PATH="$HOME:$PATH"
 alias ll='ls -al'
 alias l='ls -a'
+conda activate
