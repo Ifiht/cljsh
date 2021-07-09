@@ -413,56 +413,38 @@ by default when a new command-line REPL is started."} repl-requires
            (flush))
          (recur))))))
 
-(defn load-script
-  "Loads Clojure source from a file or resource given its path. Paths
-  beginning with @ or @/ are considered relative to classpath."
-  [^String path]
-  (if (.startsWith path "@")
-    (RT/loadResourceScript
-     (.substring path (if (.startsWith path "@/") 2 1)))
-    (Compiler/loadFile path)))
+;(defn load-script
+;  "Loads Clojure source from a file or resource given its path. Paths
+;  beginning with @ or @/ are considered relative to classpath."
+;  [^String path]
+;  (if (.startsWith path "@")
+;    (RT/loadResourceScript
+;     (.substring path (if (.startsWith path "@/") 2 1)))
+;    (Compiler/loadFile path)))
 
-(defn- init-opt
-  "Load a script"
-  [path]
-  (load-script path))
+;(defn- init-opt
+;  "Load a script"
+;  [path]
+;  (load-script path))
 
-(defn- eval-opt
-  "Evals expressions in str, prints each non-nil result using prn"
-  [str]
-  (let [eof (Object.)
-        reader (LineNumberingPushbackReader. (java.io.StringReader. str))]
-      (loop [input (with-read-known (read reader false eof))]
-        (when-not (= input eof)
-          (let [value (eval input)]
-            (when-not (nil? value)
-              (prn value))
-            (recur (with-read-known (read reader false eof))))))))
-
-(defn- init-dispatch
-  "Returns the handler associated with an init opt"
-  [opt]
-  ({"-i"     init-opt
-    "--init" init-opt
-    "-e"     eval-opt
-    "--eval" eval-opt} opt))
-
-(defn- initialize
-  "Common initialize routine for repl, script, and null opts"
-  [args inits]
-  (in-ns 'user)
-  (set! *command-line-args* args)
-  (doseq [[opt arg] inits]
-    ((init-dispatch opt) arg)))
+;(defn- eval-opt
+;  "Evals expressions in str, prints each non-nil result using prn"
+;  [str]
+;  (let [eof (Object.)
+;        reader (LineNumberingPushbackReader. (java.io.StringReader. str))]
+;      (loop [input (with-read-known (read reader false eof))]
+;        (when-not (= input eof)
+;          (let [value (eval input)]
+;            (when-not (nil? value)
+;              (prn value))
+;            (recur (with-read-known (read reader false eof))))))))
 
 (defn- repl-opt
   "Start a repl with args and inits. Print greeting if no eval options were
   present"
   [[_ & args] inits]
-  (when-not (some #(= eval-opt (init-dispatch (first %))) inits)
-    (println "Clojure" (clojure-version)))
+  (println "Clojure" (clojure-version))
   (repl :init (fn []
-                (initialize args inits)
                 (apply require repl-requires)))
   (prn)
   (System/exit 0))
