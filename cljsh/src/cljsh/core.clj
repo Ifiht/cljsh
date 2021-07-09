@@ -455,7 +455,7 @@ by default when a new command-line REPL is started."} repl-requires
   (doseq [[opt arg] inits]
     ((init-dispatch opt) arg)))
 
-(defn -main ;;repl-opt
+(defn- repl-opt
   "Start a repl with args and inits. Print greeting if no eval options were
   present"
   [[_ & args] inits]
@@ -466,3 +466,12 @@ by default when a new command-line REPL is started."} repl-requires
                 (apply require repl-requires)))
   (prn)
   (System/exit 0))
+       
+(defn -main ;;repl-opt
+  "Main function, program entry point"
+  [& args]
+  (try
+    (repl-opt nil nil)
+    (catch Throwable t
+      (println "caught exception %s" t)
+      (System/exit 1))))
