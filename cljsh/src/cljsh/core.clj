@@ -12,9 +12,7 @@
            (java.nio.file Files)
            (java.nio.file.attribute FileAttribute)
            (clojure.lang Compiler Compiler$CompilerException
-                         LineNumberingPushbackReader RT LispReader$ReaderException))
-  ;;(:use [clojure.repl :only (demunge root-cause stack-element-str)])
-  )
+                         LineNumberingPushbackReader RT LispReader$ReaderException)))
 
 (def ^:private core-namespaces
   #{"clojure.core" "clojure.core.reducers" "clojure.core.protocols" "clojure.data" "clojure.datafy"
@@ -412,32 +410,6 @@ by default when a new command-line REPL is started."} repl-requires
            (prompt)
            (flush))
          (recur))))))
-
-;(defn load-script
-;  "Loads Clojure source from a file or resource given its path. Paths
-;  beginning with @ or @/ are considered relative to classpath."
-;  [^String path]
-;  (if (.startsWith path "@")
-;    (RT/loadResourceScript
-;     (.substring path (if (.startsWith path "@/") 2 1)))
-;    (Compiler/loadFile path)))
-
-;(defn- init-opt
-;  "Load a script"
-;  [path]
-;  (load-script path))
-
-;(defn- eval-opt
-;  "Evals expressions in str, prints each non-nil result using prn"
-;  [str]
-;  (let [eof (Object.)
-;        reader (LineNumberingPushbackReader. (java.io.StringReader. str))]
-;      (loop [input (with-read-known (read reader false eof))]
-;        (when-not (= input eof)
-;          (let [value (eval input)]
-;            (when-not (nil? value)
-;              (prn value))
-;            (recur (with-read-known (read reader false eof))))))))
 
 (defn- repl-opt
   "Start a repl with args and inits. Print greeting if no eval options were
