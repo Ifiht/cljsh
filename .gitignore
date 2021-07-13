@@ -11,3 +11,16 @@ pom.xml.asc
 /.prepl-port
 .hgignore
 .hg/
+/.bash_logout
+/.conda/
+/.config/
+/.gitconfig
+/.ipynb_checkpoints/
+/.ipython/
+/.jupyter-server-log.txt
+/.keras/
+/.lein/
+/.local/
+/.m2/
+/.profile
+.lein-repl-history
