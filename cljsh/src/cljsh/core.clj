@@ -227,9 +227,9 @@ by default when a new command-line REPL is started."} repl-requires
            (flush))
          (recur))))))
 
-(defn- repl-init
+(defn- repl-init ;; "defn-" provides a non-public version of "defn"
   "Start a repl without any args, print version"
-  [[_ & args] inits]
+  []
   (println "Clojure" (clojure-version))
   (repl :init (fn []
                 (apply require repl-requires)))
@@ -242,7 +242,7 @@ by default when a new command-line REPL is started."} repl-requires
   "Main function, program entry point"
   [& args]
   (try
-    (repl-init nil nil)
+    (repl-init)
     (catch Throwable t
       (println "caught exception %s" t)
       (System/exit 1))))
