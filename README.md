@@ -2,3 +2,7 @@
 
 # cljsh
 Clojure Shell
+
+### Source Material
+- https://github.com/babashka/babashka
+- https://github.com/clojure/clojure
