@@ -4,5 +4,6 @@
 Clojure Shell
 
 ### Source Material
+- https://github.com/technomancy/leiningen
 - https://github.com/babashka/babashka
 - https://github.com/clojure/clojure
