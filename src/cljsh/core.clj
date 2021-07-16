@@ -8,9 +8,9 @@
 ;; https://github.com/dundalek/closh/blob/master/src/jvm/closh/zero/frontend/rebel.clj
 (ns cljsh.core
   (:gen-class)
-  (:require [clojure.main :as clojure-main])
-  (:require [clojure.edn :as edn])
-  (:require [clojure.string :as str]))
+  (:require [clojure.main :as clojure-main]
+            [clojure.string :as str]
+            [clojure.edn :as edn]))
 
 ;;+++++++++++++++++++++++++++++| MINIMAL REPL CODE |++++++++++++++++++++++++++++++++;;
 (defn repl-prompt

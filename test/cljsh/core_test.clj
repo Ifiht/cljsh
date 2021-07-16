@@ -9,5 +9,6 @@
 
 (deftest jar-test
   (testing "ensure the compiled jar runs by executing & printing version"
-    (def x (shell/sh "java" "-jar target/uberjar/cljsh-0.1.3-SNAPSHOT-standalone.jar --version"))
+    (def exe (str "target/uberjar/cljsh-" (System/getProperty "cljsh.version") "-standalone.jar"))
+    (def x (shell/sh "java" "-jar" exe "--version"))
     (is (=  (x :exit) 0))))
