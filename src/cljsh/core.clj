@@ -16,7 +16,7 @@
 (defn repl-prompt
   "Default :prompt hook for repl"
   []
-  (printf "%s=>_ " (ns-name *ns*)))
+  (printf "(%s) %s@%s=> " (ns-name *ns*) (System/getProperty "user.name") (System/getenv "HOSTNAME")))
 
 (defn cljsh-version
   "Prints the project version"
