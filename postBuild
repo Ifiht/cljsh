@@ -1,6 +1,11 @@
 #!/bin/bash
+
+cd /home/jovyan
+#======{[ git commands ]}======#
 git config --global user.email "peter@never.lan"
 git config --global user.name "Peter Pan"
 git config --global push.default simple
-# jt -t monokai -T -N
+git submodule init
+git submodule update
+#======{[ clj commands ]}======#
 ./lein
