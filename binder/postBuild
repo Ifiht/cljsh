@@ -10,4 +10,4 @@ git submodule update
 #======{[ clj commands ]}======#
 ./lein
 #======{[ jupyter setup ]}=====#
-jupyter lab workspaces import binder/workspace.json
+jupyter lab workspaces import /home/jovyan/binder/workspace.json
