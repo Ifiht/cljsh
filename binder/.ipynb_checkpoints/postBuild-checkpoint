@@ -8,6 +8,6 @@ git config --global push.default simple
 git submodule init
 git submodule update
 #======{[ clj commands ]}======#
-./lein
+echo "Y" | ./lein upgrade
 #======{[ jupyter setup ]}=====#
 jupyter lab workspaces import ./binder/workspace.json
